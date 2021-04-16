@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.ArrayList;
+import java.awt.List;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -51,7 +52,9 @@ public class Main extends Application {
 	
 	public static void main(String[] args) throws InstantiationException, IllegalAccessException, ClassNotFoundException, SQLException
 	{	
+		ArrayList<String> wordList = new ArrayList<String>();
 		Word word = null;
+		int i = 1, updatedOccurrence = 0;
 		
 		System.out.println("Connecting to database...");
 		connection = DriverManager.getConnection(url, username, password);
@@ -73,13 +76,21 @@ public class Main extends Application {
 				String words[] = reader.next().toLowerCase().split("[\\s*,.!?\"\'-+\\–\\—\\;]");
 				for (String w : words)
 				{
-					word = new Word(w);
-					if (checkWord(word, connection))
+					if(wordList.contains(w))
 					{
-						updateWord(word);
+						word.occurrence += 1;
+						if (checkWord(word, connection)) {
+							updateWord(word);
+						}
 					}
 					else
 					{
+						word = new Word(w);
+						word.occurrence = 1;
+						word.id = i;
+						i++;
+						wordList.add(w);
+						System.out.println("Shows that word occurrences and ids are changing. Added: " + word.word + " with id = " + word.id);
 						insertWord(word);
 					}
 					
@@ -197,7 +208,7 @@ public class Main extends Application {
 		Statement stmt = connection.createStatement();
 		String sql = "SELECT word FROM wordoccurrences.word WHERE (`word` = '" + word.word + "');";
 		ResultSet rs = stmt.executeQuery(sql);
-		Word thisEntry = new Word("");
+		Word thisEntry = word;
 		while(rs.next())
 		{
 			thisEntry.word = rs.getString("word");
@@ -220,16 +231,16 @@ public class Main extends Application {
 		Statement stmt = connection.createStatement();
 		String sql = "SELECT word, occurrence FROM wordoccurrences.word WHERE (`word` = '" + word + "');";
 		ResultSet rs = stmt.executeQuery(sql);
-		Word thisEntry = new Word("");
-		int occurrence = 0;
+		Word thisEntry = word;
 		while(rs.next())
 		{
 			thisEntry.word = rs.getString("word");
-			occurrence = rs.getInt("occurrence");
+			thisEntry.occurrence = rs.getInt("occurrence");
 		}
-		occurrence += 1;
-		PreparedStatement ps = connection.prepareStatement("UPDATE 'wordoccurrences'.'word' SET occurrence = ('" + occurrence + "') WHERE (`word` = '" + thisEntry.word + "');");
-		System.out.println("Set " + thisEntry.word + " to " + occurrence + " occurrences.");
+		thisEntry.occurrence = word.occurrence;
+		PreparedStatement ps = connection.prepareStatement("UPDATE wordoccurrences.word SET occurrence = ('" + thisEntry.occurrence + "') WHERE (`word` = '" + thisEntry.word + "');");
+		ps.executeUpdate();
+		System.out.println("Set " + thisEntry.word + " to " + thisEntry.occurrence + " occurrences.");
 		/*int status = ps.executeUpdate();
 		
 		if (status != 0)
